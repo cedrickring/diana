@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+ARCH=$(uname -m)
+case "$ARCH" in
+  "x86_64") ARCH="amd64";;
+  *)
+  echo "Unsupported arch $ARCH"
+  exit 1
+  ;;
+esac
+
+OS=$(echo `uname`|tr '[:upper:]' '[:lower:]')
+
+EXECUTABLE_NAME="diana_${OS}_${ARCH}"
+VERSION=$(curl -fsSl https://api.github.com/repos/cedrickring/diana/releases/latest | grep -Po '"tag_name": "\K.*?(?=")')
+
+echo "Downloading diana version ${VERSION}"
+DOWNLOAD_URL="https://github.com/cedrickring/diana/releases/download/${VERSION}/${EXECUTABLE_NAME}"
+
+sudo curl -fsSL $DOWNLOAD_URL -o /usr/local/bin/diana
+sudo chmod +x /usr/local/bin/diana
+
+echo "Downloaded diana to /usr/local/bin/diana"
