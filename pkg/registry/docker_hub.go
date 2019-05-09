@@ -15,12 +15,10 @@ import (
 )
 
 const (
-	bearerAuthURL = "https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull"
-	jwtAuthURL    = "https://hub.docker.com/v2/users/login/"
-)
-
-const (
-	bearerAuth string = "Bearer"
+	bearerAuthURL        = "https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull"
+	jwtAuthURL           = "https://hub.docker.com/v2/users/login/"
+	hubManifest          = "https://"
+	bearerAuth    string = "Bearer"
 )
 
 type tokenResponse struct {
@@ -38,7 +36,6 @@ type DockerHubRegistryClient struct {
 }
 
 func NewDockerHubRegistryClient(username, password string) Client {
-
 	return &DockerHubRegistryClient{
 		username: username,
 		password: password,
@@ -55,9 +52,8 @@ func (d DockerHubRegistryClient) getBearerToken(repository string) (string, erro
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		switch resp.StatusCode {
-		case http.StatusUnauthorized: //try to basic auth
+	if err := checkResponseCode(resp, "failed to get bearer token"); err != nil {
+		if err == errAuthRequired { //try basic auth
 			req := jwtRequest{
 				Username: d.username,
 				Password: d.password,
@@ -72,10 +68,12 @@ func (d DockerHubRegistryClient) getBearerToken(repository string) (string, erro
 			if err != nil {
 				return "", errors.Wrap(err, "getting jwt token from docker hub")
 			}
-		case http.StatusNotFound:
-			return "", errors.New("image not found")
-		default:
-			return "", errors.New("failed to get bearer token")
+
+			if err := checkResponseCode(resp, "failed to get bearer token"); err != nil {
+				return "", err
+			}
+		} else {
+			return "", err
 		}
 	}
 
@@ -113,23 +111,16 @@ func (d DockerHubRegistryClient) GetManifest(image string) (*Manifest, error) {
 	}
 	defer response.Body.Close()
 
-	bytes, err := ioutil.ReadAll(response.Body)
+	if err := checkResponseCode(response, "failed to get manifest"); err != nil {
+		return nil, err
+	}
+
+	b, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return nil, errors.Wrap(err, "reading manifest body")
 	}
 
-	if response.StatusCode != http.StatusOK {
-		switch response.StatusCode {
-		case http.StatusUnauthorized:
-			return nil, errors.New("authorization required")
-		case http.StatusNotFound:
-			return nil, errors.New("image not found")
-		default:
-			return nil, errors.New("failed to get manifest")
-		}
-	}
-
-	manifest, err := NewManifest(bytes)
+	manifest, err := NewManifest(b)
 	if err != nil {
 		return nil, errors.Wrap(err, "creating new manifest")
 	}
@@ -160,15 +151,8 @@ func (d DockerHubRegistryClient) PullLayer(image string, layer *Layer, out io.Wr
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		switch response.StatusCode {
-		case http.StatusUnauthorized:
-			return errors.New("authorization required")
-		case http.StatusNotFound:
-			return errors.New("not found")
-		default:
-			return errors.New("failed to get manifest")
-		}
+	if err := checkResponseCode(response, "failed to get layer"); err != nil {
+		return err
 	}
 
 	length, _ := strconv.Atoi(response.Header.Get("Content-Length"))

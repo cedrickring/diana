@@ -58,7 +58,7 @@ func runCommand(_ *cobra.Command, args []string) {
 	}
 
 	var client registry.Client
-	if tag.RegistryStr() == name.DefaultRegistry { //dockerhub
+	if tag.RegistryStr() == name.DefaultRegistry { //Docker Hub
 		client = registry.NewDockerHubRegistryClient(username, password)
 	} else {
 		client = registry.NewV2RegistryClient(username, password)

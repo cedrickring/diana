@@ -51,15 +51,8 @@ func (v V2RegistryClient) GetManifest(image string) (*Manifest, error) {
 		return nil, errors.Wrap(err, "reading manifest body")
 	}
 
-	if response.StatusCode != http.StatusOK {
-		switch response.StatusCode {
-		case http.StatusUnauthorized:
-			return nil, errors.New("authorization required")
-		case http.StatusNotFound:
-			return nil, errors.New("not found")
-		default:
-			return nil, errors.New("failed to get manifest")
-		}
+	if err := checkResponseCode(response, "failed to get manifest"); err != nil {
+		return nil, err
 	}
 
 	manifest, err := NewManifest(bytes)
@@ -88,15 +81,8 @@ func (v V2RegistryClient) PullLayer(image string, layer *Layer, out io.Writer) e
 	}
 	defer response.Body.Close()
 
-	if response.StatusCode != http.StatusOK {
-		switch response.StatusCode {
-		case http.StatusUnauthorized:
-			return errors.New("authorization required")
-		case http.StatusNotFound:
-			return errors.New("not found")
-		default:
-			return errors.New("failed to get manifest")
-		}
+	if err := checkResponseCode(response, "failed to pull layer"); err != nil {
+		return err
 	}
 
 	length, _ := strconv.Atoi(response.Header.Get("Content-Length"))
