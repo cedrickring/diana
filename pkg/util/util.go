@@ -3,8 +3,8 @@ package util
 import "os"
 
 func HomeDir() string {
-	if h := os.Getenv("HOME"); h != "" { //unix
+	if h := os.Getenv("HOME"); h != "" { // unix
 		return h
 	}
-	return os.Getenv("USERPROFILE") //windows
+	return os.Getenv("USERPROFILE") // windows
 }

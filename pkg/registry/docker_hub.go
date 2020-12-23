@@ -52,7 +52,7 @@ func (d DockerHubRegistryClient) getBearerToken(repository string) (string, erro
 	defer resp.Body.Close()
 
 	if err := checkResponseCode(resp, "failed to get bearer token"); err != nil {
-		if err == errAuthRequired { //try basic auth
+		if err == errAuthRequired { // try basic auth
 			req := jwtRequest{
 				Username: d.username,
 				Password: d.password,

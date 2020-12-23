@@ -71,7 +71,7 @@ func runCommand(_ *cobra.Command, args []string) error {
 
 	layers := manifest.Layers
 	if !includeBaseLayer {
-		//drop the first layer as it's probably the base image
+		// drop the first layer as it's probably the base image
 		layers = layers[1:]
 	}
 

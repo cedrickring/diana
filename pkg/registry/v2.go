@@ -12,7 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-//For a common registry with basic auth
+// For a common registry with basic auth
 type V2RegistryClient struct {
 	username string
 	password string
