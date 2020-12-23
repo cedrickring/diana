@@ -4,8 +4,8 @@ format: vet fmt
 
 build:
 	mkdir -p bin
-	go mod vendor
-	go build -o bin/diana ./cmd/diana.go
+	go get
+	go build -o bin/diana
 
 fmt:
 	go fmt ./pkg/... ./cmd/...

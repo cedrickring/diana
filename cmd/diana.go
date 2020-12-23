@@ -21,8 +21,7 @@ var (
 	forceTTYColors   bool
 )
 
-func main() {
-
+func Run() error {
 	rootCmd := cobra.Command{
 		Use: "diana",
 		Run: runCommand,
@@ -33,10 +32,10 @@ func main() {
 	rootCmd.Flags().BoolVarP(&forceTTYColors, "color", "c", false, "Force logrus coloful output")
 	rootCmd.MarkFlagRequired("image")
 
-	rootCmd.Execute()
+	return rootCmd.Execute()
 }
 
-func runCommand(_ *cobra.Command, args []string) {
+func runCommand(_ *cobra.Command, args []string) error {
 	setupLogrus()
 
 	if len(args) == 0 {
@@ -46,19 +45,19 @@ func runCommand(_ *cobra.Command, args []string) {
 
 	tag, err := name.NewTag(image, name.WeakValidation)
 	if err != nil {
-		logrus.Fatal(err)
+		return err
 	}
 
 	var username, password string
 	if !strings.HasPrefix(tag.RepositoryStr(), "library") {
 		username, password, err = docker.GetCredentials(tag.RegistryStr())
 		if err != nil {
-			logrus.WithError(err).Fatalf("Couldn't find registry credentials")
+			logrus.Warnf("Couldn't find credentials for registry '%s'. Pulling private images might not work without credentials.\n", tag.RegistryStr())
 		}
 	}
 
 	var client registry.Client
-	if tag.RegistryStr() == name.DefaultRegistry { //Docker Hub
+	if tag.RegistryStr() == name.DefaultRegistry { // Docker Hub
 		client = registry.NewDockerHubRegistryClient(username, password)
 	} else {
 		client = registry.NewV2RegistryClient(username, password)
@@ -66,7 +65,7 @@ func runCommand(_ *cobra.Command, args []string) {
 
 	manifest, err := client.GetManifest(image)
 	if err != nil {
-		logrus.WithError(err).Fatalf("Failed to get manifest for image %s", image)
+		return errors.Wrapf(err, "getting manifest for image %s", image)
 	}
 
 	layers := manifest.Layers
@@ -108,8 +107,10 @@ func runCommand(_ *cobra.Command, args []string) {
 	search := filepath.Join(path, fileName)
 	f, err := os.Open(search)
 	if err != nil {
-		logrus.Errorf(`The file "%v" doesn't exist in the image`, fileName)
-		return
+		if os.IsNotExist(err) {
+			return errors.Errorf("file %s not found in image", fileName)
+		}
+		return errors.Wrap(err, "opening file")
 	}
 	defer f.Close()
 
@@ -121,12 +122,12 @@ func runCommand(_ *cobra.Command, args []string) {
 	target, err := os.OpenFile(fileName, os.O_CREATE|os.O_RDWR, os.ModePerm)
 	if err != nil {
 		logrus.WithError(err).Errorf("Couldn't create target file")
-		return
+		return errors.Wrap(err, "creating target file")
 	}
 	defer target.Close()
 
 	if _, err = io.Copy(target, f); err != nil {
-		logrus.Fatal(err)
+		return errors.Wrap(err, "copying content to target file")
 	}
 
 	logrus.Infof("Extracted file to ./%s", fileName)
