@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"io"
@@ -11,6 +11,7 @@ import (
 	"github.com/cedrickring/diana/pkg/registry"
 	"github.com/cedrickring/diana/pkg/tar"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 )
@@ -23,8 +24,8 @@ var (
 
 func Run() error {
 	rootCmd := cobra.Command{
-		Use: "diana",
-		Run: runCommand,
+		Use:  "diana",
+		RunE: runCommand,
 	}
 
 	rootCmd.Flags().StringVarP(&image, "image", "i", "", "Full image name")
@@ -77,7 +78,7 @@ func runCommand(_ *cobra.Command, args []string) error {
 	tmp, err := ioutil.TempDir("", "diana")
 	if err != nil {
 		logrus.WithError(err).Errorf("Can't create temporary directory. Please check rights for this executable.")
-		return
+		return err
 	}
 
 	var tarFiles []string
@@ -89,7 +90,7 @@ func runCommand(_ *cobra.Command, args []string) error {
 		if err != nil {
 			logrus.Errorln(err)
 			f.Close()
-			return
+			return err
 		}
 
 		tarFiles = append(tarFiles, f.Name())
@@ -131,6 +132,7 @@ func runCommand(_ *cobra.Command, args []string) error {
 	}
 
 	logrus.Infof("Extracted file to ./%s", fileName)
+	return err
 }
 
 func setupLogrus() {

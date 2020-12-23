@@ -17,7 +17,6 @@ import (
 const (
 	bearerAuthURL        = "https://auth.docker.io/token?service=registry.docker.io&scope=repository:%s:pull"
 	jwtAuthURL           = "https://hub.docker.com/v2/users/login/"
-	hubManifest          = "https://"
 	bearerAuth    string = "Bearer"
 )
 
